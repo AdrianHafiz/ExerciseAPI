@@ -1,5 +1,7 @@
-const usersService = require('./users-service');
+const { validationResult } = require('express-validator');
 const { errorResponder, errorTypes } = require('../../../core/errors');
+const usersService = require('./users-service');
+const { changePassword } = require('./users-service');
 
 /**
  * Handle get list of users request
@@ -45,21 +47,36 @@ async function getUser(request, response, next) {
  * @param {object} next - Express route middlewares
  * @returns {object} Response object or pass an error to the next route
  */
+
 async function createUser(request, response, next) {
   try {
-    const name = request.body.name;
-    const email = request.body.email;
-    const password = request.body.password;
+    // Validasi input menggunakan Express Validator
+    const errors = validationResult(request);
+    if (!errors.isEmpty()) {
+      return response.status(400).json({ errors: errors.array() });
+    }
 
+    const { name, email, password, password_confirm } = request.body;
+
+    // Periksa apakah password dan konfirmasi password cocok
+    if (password !== password_confirm) {
+      const error = new Error(
+        'Password and password confirmation do not match'
+      );
+      error.status = 403;
+      throw error;
+    }
+
+    // Continue with user creation if password matches confirmation
     const success = await usersService.createUser(name, email, password);
     if (!success) {
       throw errorResponder(
         errorTypes.UNPROCESSABLE_ENTITY,
-        'Failed to create user'
+        'Gagal membuat pengguna'
       );
     }
 
-    return response.status(200).json({ name, email });
+    return response.status(201).json({ message: 'Pengguna berhasil dibuat' });
   } catch (error) {
     return next(error);
   }
@@ -88,6 +105,24 @@ async function updateUser(request, response, next) {
 
     return response.status(200).json({ id });
   } catch (error) {
+    return next(error);
+  }
+}
+
+async function changeUserPassword(request, response, next) {
+  try {
+    const userId = request.params.id;
+    const { oldPassword, newPassword, confirmPassword } = request.body;
+
+    // Panggil fungsi changePassword dari service
+    await changePassword(userId, oldPassword, newPassword, confirmPassword);
+
+    // Berhasil mengubah password
+    return response
+      .status(200)
+      .json({ message: 'Password updated successfully' });
+  } catch (error) {
+    // Tangani kesalahan jika terjadi
     return next(error);
   }
 }
@@ -123,4 +158,5 @@ module.exports = {
   createUser,
   updateUser,
   deleteUser,
+  changeUserPassword,
 };

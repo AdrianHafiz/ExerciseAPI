@@ -1,5 +1,4 @@
 const { User } = require('../../../models');
-
 /**
  * Get a list of users
  * @returns {Promise}
@@ -53,6 +52,9 @@ async function updateUser(id, name, email) {
   );
 }
 
+async function findById(userId) {
+  return await User.findById(userId);
+}
 /**
  * Delete a user
  * @param {string} id - User ID
@@ -68,4 +70,5 @@ module.exports = {
   createUser,
   updateUser,
   deleteUser,
+  findById,
 };
